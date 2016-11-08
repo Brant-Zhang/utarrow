@@ -72,6 +72,7 @@ func (r *ringbuf) getall() (val []objectType) {
 		copy(val, r.buf[r.head:r.sz])
 		copy(val[r.sz-r.head:], r.buf[:cptail])
 	}
+	r.head = cptail
 	return val
 }
 
