@@ -1,0 +1,86 @@
+package lock
+
+import (
+	"fmt"
+	"s4s/common/lib/keycrypt"
+	"testing"
+	"time"
+
+	"github.com/astaxie/beego"
+	"github.com/garyburd/redigo/redis"
+	"gopkg.in/redsync.v1"
+)
+
+func init() {
+	key := ""
+	host := "127.0.0.1:6379"
+	auth := ""
+	poolsize := 3
+	timeoutS, _ := beego.AppConfig.Int("lock::timeout")
+	if len(key) > 0 && len(auth) > 0 {
+		var err error
+		auth, err = keycrypt.Decode(key, auth)
+		if err != nil {
+			return
+		}
+	}
+
+	if timeoutS == 0 {
+		timeoutS = 60
+	}
+	timeout := time.Second * time.Duration(timeoutS)
+
+	pool := &redis.Pool{
+		MaxIdle:     poolsize,
+		IdleTimeout: time.Second * 240,
+		Dial: func() (redis.Conn, error) {
+			conn, err := redis.DialTimeout("tcp", host, timeout, timeout, timeout)
+			if err != nil {
+				return nil, err
+			}
+			if auth != "" {
+				_, err = conn.Do("AUTH", auth)
+			}
+			return conn, err
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	redsyncClient = redsync.New([]redsync.Pool{pool})
+	return
+
+}
+
+func woker(l Lock, n int) {
+	defer func() {
+		e := recover()
+		fmt.Println(n, e)
+	}()
+	for {
+		time.Sleep(time.Second * 3)
+		//fmt.Printf("work[%d] get lock\n", n)
+		if err := l.Lock(); err != nil {
+			fmt.Println(err)
+			continue
+		}
+		fmt.Printf("work[%d] get lock end\n", n)
+		fmt.Printf("work[%d] running\n", n)
+		time.Sleep(time.Second * 10)
+		fmt.Printf("work[%d] release lock\n", n)
+		if err := l.Unlock(); err != nil {
+			fmt.Println(err)
+			continue
+		}
+		//fmt.Printf("work[%d] release lock end\n", n)
+	}
+}
+
+func TestRedisLock(t *testing.T) {
+	fmt.Println("begin")
+	go woker(NewRedisLock("dblocktest"), 1)
+	go woker(NewRedisLock("dblocktest"), 2)
+	//go woker(NewRedisLock("dblocktest"), 3)
+	time.Sleep(time.Second * 7260)
+}
