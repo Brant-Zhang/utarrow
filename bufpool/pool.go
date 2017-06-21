@@ -1,16 +1,14 @@
 //线程安全的buffer缓冲池，可以被多goroutine同时获取／回收
-package main
+package bufpool
 
 import (
 	"errors"
-	"fmt"
-	"time"
 )
 
 var ERRBufPoolFull = errors.New("Gave a buffer to a full pool.")
 
 const datasize = 1024
-const BUFFERCOUNT = 1000000
+const DefaultBufferPoolSize = 1000000
 
 type buffer struct {
 	data [datasize]byte
@@ -18,9 +16,12 @@ type buffer struct {
 }
 type bchan chan *buffer
 
-func newBuffer() bchan {
-	b := make(bchan, BUFFERCOUNT)
-	for i := 0; i < BUFFERCOUNT; i++ {
+func NewBuffer(poolsize int) bchan {
+	if poolsize <= 0 {
+		poolsize = DefaultBufferPoolSize
+	}
+	b := make(bchan, poolsize)
+	for i := 0; i < poolsize; i++ {
 		buf := new(buffer)
 		b.put(buf)
 	}
@@ -53,13 +54,15 @@ func (pool bchan) get() *buffer {
 	return <-pool
 }
 
+/*
 func main() {
-	gpool := newBuffer()
+	var poolsize = 99999
+	gpool := NewBuffer(poolsize)
 	start := time.Now().UnixNano()
-	for i := 0; i < BUFFERCOUNT; i++ {
+	for i := 0; i < poolsize; i++ {
 		v := gpool.get()
 		gpool.put(v)
 	}
 	end := time.Now().UnixNano()
 	fmt.Println((end - start) / 1e6)
-}
+}*/
