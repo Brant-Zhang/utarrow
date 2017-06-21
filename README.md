@@ -1,5 +1,5 @@
 # utarrow
-some go packages and tools used in my privious job 
+some go packages and tools used in my privious projects 
 # content
 + **bufpool** goroutine safe buffer pool
 + **lru** simple lru from [groupcache](https://github.com/golang/groupcache/tree/master/lru)
