@@ -1,7 +1,6 @@
-package main
+package pattern
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -29,7 +28,7 @@ func (d *diskStore) Open(file string) (io.ReadWriteCloser, error) {
 }
 
 func newDiskStorage() Store {
-	return &diskStore{dirPath: "/Users/brant/tmp/"}
+	return &diskStore{dirPath: "/home/brant/temp/"}
 }
 
 type memStore struct {
@@ -87,27 +86,4 @@ func NewStore(t StorageType) Store {
 	default:
 		return newTempStorage()
 	}
-}
-
-func main() {
-	s := NewStore(DiskStorage)
-	f, err := s.Open("file")
-	if err != nil {
-		panic(err)
-	}
-	/*
-		n, err := f.Write([]byte("hello"))
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("data write counts:%d\n", n)
-	*/
-	var buf = make([]byte, 1024)
-	n, err := f.Read(buf)
-	if err != nil && err != io.EOF {
-		panic(err)
-	}
-	fmt.Printf("data read:%d---%v\n", n, buf[:n])
-
-	f.Close()
 }
