@@ -10,3 +10,9 @@ func TestLogging(t *testing.T) {
 		n.logf(i, "Test")
 	}
 }
+
+func TestDecorator(t *testing.T) {
+	f := LogDecorate(Double)
+	r := f(5)
+	t.Log(r)
+}

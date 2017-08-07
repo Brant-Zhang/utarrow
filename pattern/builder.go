@@ -75,9 +75,10 @@ func NewBuilder() *CarAttr {
 	return new(CarAttr)
 }
 
+/*
 func main() {
 	sportCar := NewBuilder().Color(BlueColor).Wheels(SportsWheels).TopSpeed(50 * MPH).Build()
 	sportCar.Drive()
 	familyCar := NewBuilder().Color(RedColor).Wheels(SteelWheels).TopSpeed(150 * MPH).Build()
 	familyCar.Drive()
-}
+}*/
