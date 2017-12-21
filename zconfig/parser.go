@@ -1,4 +1,4 @@
-package zlconfig
+package zconfig
 
 import (
 	"unicode"
@@ -50,7 +50,7 @@ func (s *section) parseKey(line string) int {
 	key := strings.TrimSpace(sv[0])
 	v := strings.TrimSpace(sv[1])
 	var vst valueST
-	if len(v) == 0{
+	if len(v) == 0 {
 		return DEFAULTVAL
 	}
 

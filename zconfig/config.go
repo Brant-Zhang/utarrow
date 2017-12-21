@@ -1,6 +1,6 @@
-//package zlconfig
-//copywrite @zhanglei
-package zlconfig
+//package zconfig
+//copywrite @brant
+package zconfig
 
 import (
 	//"errors"

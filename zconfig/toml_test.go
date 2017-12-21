@@ -1,4 +1,4 @@
-package zlconfig
+package zconfig
 
 import (
 	"fmt"
