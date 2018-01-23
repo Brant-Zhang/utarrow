@@ -1,3 +1,8 @@
+// Copyright 2017 The margin Authors. All rights reserved.
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file.
+
+// Package log provides logging interfaces.
 package log
 
 import (
@@ -7,21 +12,19 @@ import (
 	"runtime"
 )
 
+// Log Level
 const (
-	// Log Level
-	Fatal = 0
-	Error = 1
-	Warn  = 2
-	Info  = 3
-	Debug = 4
+	FATAL = 0
+	ERROR = 1
+	WARN  = 2
+	INFO  = 3
+	DEBUG = 4
 )
 
-/*
-   A Logger represents an active logging object that generates lines of output
-   to an io.Writer. Each logging operation makes a single call to the
-   Writer's Write method. A Logger can be used simultaneously from multiple
-   goroutines; it guarantees to serialize access to the Writer.
-*/
+// Logger represents an active logging object that generates lines of output to an io.Writer.
+//Each logging operation makes a single call to theWriter's Write method.
+//A Logger can be used simultaneously from multiple goroutines
+//it guarantees to serialize access to the Writer.
 type Logger struct {
 	log   *log.Logger
 	file  *os.File
@@ -29,18 +32,27 @@ type Logger struct {
 }
 
 var (
-	defaultLogLevel = Debug
-	DefaultLogger   = &Logger{log: log.New(os.Stdout, "", log.LstdFlags), file: nil, level: defaultLogLevel}
-	errLevels       = []int{Fatal, Error, Warn, Info, Debug}
+	defaultLogLevel = DEBUG
+	defaultLogger   = &Logger{log: log.New(os.Stdout, "", log.LstdFlags), file: nil, level: defaultLogLevel}
+	errLevels       = []int{FATAL, ERROR, WARN, INFO, DEBUG}
 	strLevels       = []string{"FATAL", "ERROR", "WARN", "INFO", "DEBUG"}
+	selfHold        *Logger
 )
 
-/*
-   New creates a new Logger. The out variable sets the destination to
-   which log data will be written. The prefix appears at the beginning of
-   each generated log line. The file argument defines the write log file path.
-   if any error the os.Stdout will return
-*/
+// Setup creates a new Logger and hold it in this package.
+// The out variable sets the destination to which log data will be written.
+// The prefix appears at the beginning of each generated log line.
+// The file argument defines the write log file path.
+// if any error the os.Stdout will return
+func Setup(file string, level int) (err error) {
+	if selfHold != nil {
+		return nil
+	}
+	selfHold, err = New(file, level)
+	return
+}
+
+// New returns an Logger
 func New(file string, levelIn int) (*Logger, error) {
 	level := defaultLogLevel
 	for _, v := range errLevels {
@@ -51,7 +63,7 @@ func New(file string, levelIn int) (*Logger, error) {
 	if file != "" {
 		f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
-			return DefaultLogger, err
+			return defaultLogger, err
 		}
 		logger := log.New(f, "", log.LstdFlags)
 		return &Logger{log: logger, file: f, level: level}, nil
@@ -60,70 +72,80 @@ func New(file string, levelIn int) (*Logger, error) {
 }
 
 // Close closes the open log file.
-func (l *Logger) Close() error {
-	if l.file != nil {
-		return l.file.Close()
+func Close() error {
+	if selfHold.file != nil {
+		return selfHold.file.Close()
 	}
 	return nil
 }
 
 // Error use the Error log level write data
-func (l *Logger) Error(format string, args ...interface{}) {
-	if l.level >= Error {
-		l.logCore(Error, format, args...)
+func Error(format string, args ...interface{}) {
+	if selfHold.level >= ERROR {
+		selfHold.logCore(ERROR, format, args...)
 	}
 }
-func (l *Logger) Errorln(args ...interface{}) {
-	if l.level >= Error {
-		l.logCore(Error, "", args...)
+
+// Errorln like Error but ignore format
+func Errorln(args ...interface{}) {
+	if selfHold.level >= ERROR {
+		selfHold.logCore(ERROR, "", args...)
 	}
 }
 
 // Debug use the Error log level write data
-func (l *Logger) Debug(format string, args ...interface{}) {
-	if l.level >= Debug {
-		l.logCore(Debug, format, args...)
+func Debug(format string, args ...interface{}) {
+	if selfHold.level >= DEBUG {
+		selfHold.logCore(DEBUG, format, args...)
 	}
 }
-func (l *Logger) Debugln(args ...interface{}) {
-	if l.level >= Debug {
-		l.logCore(Debug, "", args...)
+
+// Debugln like Debug but ignore format
+func Debugln(args ...interface{}) {
+	if selfHold.level >= DEBUG {
+		selfHold.logCore(DEBUG, "", args...)
 	}
 }
 
 // Info use the Info log level write data
-func (l *Logger) Info(format string, args ...interface{}) {
-	if l.level >= Info {
-		l.logCore(Info, format, args...)
+func Info(format string, args ...interface{}) {
+	if selfHold.level >= INFO {
+		selfHold.logCore(INFO, format, args...)
 	}
 }
-func (l *Logger) Infoln(args ...interface{}) {
-	if l.level >= Info {
-		l.logCore(Info, "", args...)
+
+// Infoln like info bug ignore format
+func Infoln(args ...interface{}) {
+	if selfHold.level >= INFO {
+		selfHold.logCore(INFO, "", args...)
 	}
 }
 
 // Warn use the Warn level write data
-func (l *Logger) Warn(format string, args ...interface{}) {
-	if l.level >= Warn {
-		l.logCore(Warn, format, args...)
+func Warn(format string, args ...interface{}) {
+	if selfHold.level >= WARN {
+		selfHold.logCore(WARN, format, args...)
 	}
 }
-func (l *Logger) Warnln(args ...interface{}) {
-	if l.level >= Warn {
-		l.logCore(Warn, "", args...)
+
+// Warnln like Warn but ignore format
+func Warnln(args ...interface{}) {
+	if selfHold.level >= WARN {
+		selfHold.logCore(WARN, "", args...)
 	}
 }
 
 // Fatal use the Fatal level write data
-func (l *Logger) Fatal(format string, args ...interface{}) {
-	if l.level >= Fatal {
-		l.logCore(Fatal, format, args...)
+func Fatal(format string, args ...interface{}) {
+	if selfHold.level >= FATAL {
+		selfHold.logCore(FATAL, format, args...)
 	}
 }
-func (l *Logger) Fatalln(args ...interface{}) {
-	if l.level >= Fatal {
-		l.logCore(Fatal, "", args...)
+
+// Fatalln like fatal bug ignore format
+func Fatalln(args ...interface{}) {
+	if selfHold.level >= FATAL {
+		selfHold.logCore(FATAL, "", args...)
 	}
 }
 
