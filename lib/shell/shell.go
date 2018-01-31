@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"os/exec"
@@ -17,4 +18,15 @@ func ShellRun(line string) (string, error) {
 		return "", errors.New(err.Error() + ":" + string(b))
 	}
 	return strings.TrimSpace(string(b)), nil
+}
+func CmdRun(bin string, args ...string) (data []byte, err error) {
+	cmd := exec.Command(bin, args...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return
+	}
+	data = out.Bytes()
+	return
 }

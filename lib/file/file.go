@@ -120,6 +120,23 @@ func IsExist(fp string) bool {
 	return err == nil || os.IsExist(err)
 }
 
+func FileDiff(a, b string) bool {
+	ex := IsExist(a)
+	if !ex {
+		return true
+	}
+	ex = IsExist(b)
+	if !ex {
+		return true
+	}
+	az, _ := FileSize(a)
+	bz, _ := FileSize(b)
+	if az != bz {
+		return true
+	}
+	return false
+}
+
 // Search a file in paths.
 // this is often used in search config file in /etc ~/
 func SearchFile(filename string, paths ...string) (fullPath string, err error) {
