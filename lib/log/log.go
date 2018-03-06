@@ -10,6 +10,8 @@ import (
 	"log"
 	"os"
 	"runtime"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Log Level
@@ -69,6 +71,37 @@ func New(file string, levelIn int) (*Logger, error) {
 		return &Logger{log: logger, file: f, level: level}, nil
 	}
 	return &Logger{log: log.New(os.Stdout, "", log.LstdFlags), file: nil, level: level}, nil
+}
+
+func newRotate(file string, levelIn int) (*Logger, error) {
+	level := defaultLogLevel
+	for _, v := range errLevels {
+		if v == levelIn {
+			level = v
+		}
+	}
+
+	out := &lumberjack.Logger{
+		Filename:   file,
+		MaxSize:    5, // megabytes
+		MaxBackups: 3,
+		MaxAge:     7,    //days
+		Compress:   true, // disabled by default
+	}
+	logger := log.New(out, "", log.LstdFlags)
+	return &Logger{log: logger, file: nil, level: level}, nil
+}
+
+func SetupRotate(file string, level int) (err error) {
+	if selfHold != nil {
+		return nil
+	}
+	lg, err := newRotate(file, level)
+	if err != nil {
+		return err
+	}
+	selfHold = lg
+	return nil
 }
 
 // Close closes the open log file.
