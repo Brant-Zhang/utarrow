@@ -5,7 +5,7 @@ import (
 )
 
 func TestLogwrite(t *testing.T) {
-	err := Setup("/tmp/log", DEBUG)
+	err := Setup("/tmp/log", "debug")
 	if err != nil {
 		t.Error("log error", err)
 	}

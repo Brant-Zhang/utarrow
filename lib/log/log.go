@@ -41,16 +41,36 @@ var (
 	selfHold        *Logger
 )
 
+func levelFormat(l string)int{
+	var lint int
+	switch l {
+		case "debug":
+			lint=DEBUG
+		case "error":
+			lint=ERROR
+		case "warn":
+			lint=WARN 
+		case "fatal":
+			lint=FATAL
+		case "info":
+			lint=INFO
+		default:
+			lint=DEBUG
+	}
+	return lint
+}
+
 // Setup creates a new Logger and hold it in this package.
 // The out variable sets the destination to which log data will be written.
 // The prefix appears at the beginning of each generated log line.
 // The file argument defines the write log file path.
 // if any error the os.Stdout will return
-func Setup(file string, level int) (err error) {
+func Setup(file string, level string) (err error) {
 	if selfHold != nil {
 		return nil
 	}
-	selfHold, err = New(file, level)
+	l:=levelFormat(level)
+	selfHold, err = New(file, l)
 	return
 }
 
