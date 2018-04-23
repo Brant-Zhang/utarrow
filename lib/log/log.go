@@ -41,21 +41,21 @@ var (
 	selfHold        *Logger
 )
 
-func levelFormat(l string)int{
+func levelFormat(l string) int {
 	var lint int
 	switch l {
-		case "debug":
-			lint=DEBUG
-		case "error":
-			lint=ERROR
-		case "warn":
-			lint=WARN 
-		case "fatal":
-			lint=FATAL
-		case "info":
-			lint=INFO
-		default:
-			lint=DEBUG
+	case "debug":
+		lint = DEBUG
+	case "error":
+		lint = ERROR
+	case "warn":
+		lint = WARN
+	case "fatal":
+		lint = FATAL
+	case "info":
+		lint = INFO
+	default:
+		lint = DEBUG
 	}
 	return lint
 }
@@ -69,7 +69,7 @@ func Setup(file string, level string) (err error) {
 	if selfHold != nil {
 		return nil
 	}
-	l:=levelFormat(level)
+	l := levelFormat(level)
 	selfHold, err = New(file, l)
 	return
 }
@@ -112,11 +112,12 @@ func newRotate(file string, levelIn int) (*Logger, error) {
 	return &Logger{log: logger, file: nil, level: level}, nil
 }
 
-func SetupRotate(file string, level int) (err error) {
+func SetupRotate(file string, level string) (err error) {
 	if selfHold != nil {
 		return nil
 	}
-	lg, err := newRotate(file, level)
+	l := levelFormat(level)
+	lg, err := newRotate(file, l)
 	if err != nil {
 		return err
 	}
