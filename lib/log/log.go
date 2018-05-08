@@ -103,7 +103,7 @@ func newRotate(file string, levelIn int) (*Logger, error) {
 
 	out := &lumberjack.Logger{
 		Filename:   file,
-		MaxSize:    5, // megabytes
+		MaxSize:    500, // megabytes
 		MaxBackups: 3,
 		MaxAge:     7,    //days
 		Compress:   true, // disabled by default
