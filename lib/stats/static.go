@@ -7,49 +7,59 @@ import (
 )
 
 type statesVal struct {
-	v int64
+	V int64
 }
 
 func Increment(sv *statesVal) {
-	atomic.AddInt64(&sv.v, 1)
+	atomic.AddInt64(&sv.V, 1)
+}
+
+func IncrementNums(sv *statesVal, cn int) {
+	atomic.AddInt64(&sv.V, int64(cn))
 }
 
 func Decrement(sv *statesVal) {
-	atomic.AddInt64(&sv.v, -1)
+	atomic.AddInt64(&sv.V, -1)
 }
 
-func Reset(sv *statesVal){
-	atomic.StoreInt64(&sv.v,0)
+func Reset(sv *statesVal) {
+	atomic.StoreInt64(&sv.V, 0)
 }
 
 func Assign(sv *statesVal, count int64) {
-	sv.v = count
+	sv.V = count
 }
 
 func AddStateVal(sv *statesVal) {
-	sv.v++
+	sv.V++
 }
 
-type statsM map[string]*statesVal
+type StatsM map[string]*statesVal
 
-func NewStats() statsM{
-	v:=make(statsM,0)	
+func NewStats() StatsM {
+	v := make(StatsM, 0)
 	return v
 }
 
-func (s statsM)AddKey(k string){
-	s[k]=&statesVal{0}
+func (s StatsM) AddKey(k string) {
+	s[k] = &statesVal{0}
 }
 
-func (s statsM)PrintStats() {
+func (s StatsM) PrintStats() {
 	fmt.Printf("%s:", time.Now().Format(time.RFC3339))
 	for k, v := range s {
-		fmt.Printf("%s:%d;\t\t", k, v.v)
+		fmt.Printf("%s:%d;\t\t", k, v.V)
 	}
 	fmt.Printf("\n")
 }
 
-func (s statsM)showStatus() {
+func (s StatsM) Reset() {
+	for _, v := range s {
+		atomic.StoreInt64(&v.V, 0)
+	}
+}
+
+func (s StatsM) showStatus() {
 	t3 := time.NewTicker(time.Second * 120) //print statics
 	for {
 		select {
