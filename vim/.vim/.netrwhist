@@ -1,8 +1,0 @@
-let g:netrw_dirhistmax  =10
-let g:netrw_dirhist_cnt =6
-let g:netrw_dirhist_1='/Users/brant/360云盘/工作回忆录/cloud_trunk/blyun/trunk/account/main'
-let g:netrw_dirhist_2='/Users/brant/work/src/stowage/src/common_backup/filter'
-let g:netrw_dirhist_3='/Users/brant/work/src/stowage/src/common_backup'
-let g:netrw_dirhist_4='/Users/brant/work/src/stowage/src/common_backup/service'
-let g:netrw_dirhist_5='/Users/brant/git/cloudsv/stowage/src/common/model'
-let g:netrw_dirhist_6='/Users/brant/git/cloudsv/stowage/src/stowage_web'
