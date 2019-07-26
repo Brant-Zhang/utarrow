@@ -10,6 +10,11 @@ import (
 	"unsafe"
 )
 
+const (
+	KEY_EXPIRE  = 1
+	KEY_PERSIST = 2
+)
+
 type valueProto interface{}
 type entryProto struct {
 	v     valueProto
@@ -29,7 +34,9 @@ type set_st struct {
 	pset            unsafe.Pointer
 }
 
-//support expire entry and no expire
+//TODO
+//support entries with or without expire
+//when without time expiration,update need to be known at first time
 func Newset(flag, ex, tr int) *set_st {
 	s := new(set_st)
 	s.m = make(mapProto)
@@ -39,14 +46,18 @@ func Newset(flag, ex, tr int) *set_st {
 	s.expireTime = ex
 	s.triggerInterval = tr
 	s.flag = flag
+
 	go s.refresh()
+
 	return s
 }
 
 func (this *set_st) Add(k string, v valueProto) {
 	var entry entryProto
 	entry.v = v
+
 	entry.utime = time.Now().Unix()
+
 	this.mu.Lock()
 	this.m[k] = entry
 	this.mu.Unlock()

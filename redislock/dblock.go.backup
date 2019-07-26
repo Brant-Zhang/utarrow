@@ -1,0 +1,127 @@
+package lock
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+
+	"s4s/common/lib/keycrypt"
+	"s4s/common/lib/util"
+
+	"github.com/astaxie/beego"
+	_ "github.com/go-sql-driver/mysql"
+)
+
+type DbLock struct {
+	name string
+	tx   *sql.Tx
+}
+
+var (
+	driverName string
+	dsn        string
+	db         *sql.DB
+
+	ip string
+)
+
+func LoadLockDB(key string) (err error) {
+	username := beego.AppConfig.String("lock::username")
+	password := beego.AppConfig.String("lock::password")
+	addr := beego.AppConfig.String("lock::addr")
+	dbname := beego.AppConfig.String("lock::dbname")
+	if len(key) > 0 {
+		password, err = keycrypt.Decode(key, password)
+		if err != nil {
+			return
+		}
+	}
+
+	DSN := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8", username, password, addr, dbname)
+
+	db, err = sql.Open("mysql", DSN)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(96)
+
+	ip, err = util.GetLocalIP()
+
+	return err
+}
+
+func NewDbLock(name string) (lock *DbLock) {
+	return &DbLock{name: name, tx: nil}
+}
+
+func (this *DbLock) Lock() error {
+	if this == nil {
+		return errors.New("empty of *DbLock")
+	}
+	if this.name == "" {
+		return errors.New("empty of DbLock.name")
+	}
+
+	if this.tx != nil {
+		this.tx.Rollback()
+	}
+
+	if tx, err := db.Begin(); err != nil {
+		return err
+	} else {
+		this.tx = tx
+	}
+
+	query := "select name from LockItem where name='" + this.name + "' for update;"
+	//fmt.Println(query)
+
+	var name string
+	this.tx.QueryRow(query).Scan(&name)
+	if name != this.name {
+		query = "insert into LockItem (name, ip) values ('" + this.name + "', '" + ip + "');"
+	} else {
+		query = "update LockItem set ip='" + ip + "' where name='" + this.name + "';"
+	}
+	//fmt.Println(query)
+	_, err := this.tx.Exec(query)
+
+	// keep tx alive
+	go func() {
+		pingTicker := time.NewTicker(time.Second * 60)
+		defer pingTicker.Stop()
+		for _ = range pingTicker.C {
+			if this.tx == nil {
+				return
+			}
+			if _, e := this.tx.Exec("select 1"); e != nil {
+				return
+			}
+		}
+	}()
+
+	return err
+}
+
+func (this *DbLock) Unlock() error {
+	defer func() {
+		this.tx = nil
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	if this == nil {
+		return errors.New("empty of *DbLock")
+	}
+	if this.name == "" {
+		return errors.New("empty of DbLock.name")
+	}
+	if this.tx == nil {
+		return errors.New("please call Lock() method first")
+	}
+	return this.tx.Commit()
+}

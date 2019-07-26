@@ -1,0 +1,33 @@
+package lock
+
+import (
+	"errors"
+
+	"github.com/astaxie/beego"
+)
+
+var lockdb string
+
+func Init(key string) error {
+	lockdb = beego.AppConfig.String("lock::db")
+	if lockdb == "redis" {
+		return LoadLockRedis(key)
+	} else if lockdb == "mysql" {
+		return LoadLockDB(key)
+	}
+	return errors.New("Lock.DB not support: " + lockdb)
+}
+
+type Lock interface {
+	Lock() error
+	Unlock() error
+}
+
+func NewLock(name string) Lock {
+	if lockdb == "redis" {
+		return NewRedisLock(name)
+	} else if lockdb == "mysql" {
+		return NewDbLock(name)
+	}
+	return nil
+}
