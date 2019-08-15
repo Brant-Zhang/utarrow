@@ -1,9 +1,36 @@
 package znet
 
 import (
+	"bytes"
+	"errors"
 	"net"
 )
 
+func MacToHex(bb []byte) ([6]byte, error) {
+	var tt [6]byte
+	bb = bytes.ToLower(bb)
+	if len(bb) != 12 {
+		return tt, errors.New("source paramter's len wrong")
+	}
+	for k, v := range bb {
+		if k%2 == 0 {
+			if v >= 'a' {
+				v = (v - 'a' + 10)
+			} else {
+				v = v - '0'
+			}
+			tt[5-k/2] = v * 16
+		} else {
+			if v >= 'a' {
+				v = (v - 'a' + 10)
+			} else {
+				v = v - '0'
+			}
+			tt[5-k/2] += v
+		}
+	}
+	return tt, nil
+}
 func Iprange(cidr string) ([]string, error) {
 	ip, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
