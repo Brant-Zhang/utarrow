@@ -93,7 +93,7 @@ func New(file string, levelIn int) (*Logger, error) {
 	return &Logger{log: log.New(os.Stdout, "", log.LstdFlags), file: nil, level: level}, nil
 }
 
-func newRotate(file string, levelIn int) (*Logger, error) {
+func newRotate(file string, levelIn int, size int) (*Logger, error) {
 	level := defaultLogLevel
 	for _, v := range errLevels {
 		if v == levelIn {
@@ -103,13 +103,29 @@ func newRotate(file string, levelIn int) (*Logger, error) {
 
 	out := &lumberjack.Logger{
 		Filename:   file,
-		MaxSize:    300, // megabytes
+		MaxSize:    size, // megabytes
 		MaxBackups: 3,
 		MaxAge:     7,    //days
 		Compress:   true, // disabled by default
 	}
 	logger := log.New(out, "", log.LstdFlags)
 	return &Logger{log: logger, file: nil, level: level}, nil
+}
+
+func SetupRotateD(file string, level string, size int) (err error) {
+	if selfHold != nil {
+		return nil
+	}
+	if file == "" {
+		return Setup(file, level)
+	}
+	l := levelFormat(level)
+	lg, err := newRotate(file, l, size)
+	if err != nil {
+		return err
+	}
+	selfHold = lg
+	return nil
 }
 
 func SetupRotate(file string, level string) (err error) {
@@ -120,7 +136,7 @@ func SetupRotate(file string, level string) (err error) {
 		return Setup(file, level)
 	}
 	l := levelFormat(level)
-	lg, err := newRotate(file, l)
+	lg, err := newRotate(file, l, 300)
 	if err != nil {
 		return err
 	}

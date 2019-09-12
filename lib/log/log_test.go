@@ -14,7 +14,7 @@ func TestLogwrite(t *testing.T) {
 	Warnln("hello 2")
 	var a []byte
 	var b int
-	Debugln("nihao--%s--%v", a, b)
+	Debug("nihao--%s--%v", a, b)
 }
 
 /*
