@@ -242,6 +242,18 @@ func (w *RedisManager) GetString(key string) (value string, err error) {
 	return redis.String(reply, err)
 }
 
+func (w *RedisManager) GetBytes(key string) (value []byte, err error) {
+	reply, err := w.Get(key)
+	if err != nil {
+		return
+	}
+	if reply == nil {
+		return
+	}
+
+	return redis.Bytes(reply, err)
+}
+
 // GetInt64 获取数据，转化为int64
 func (w *RedisManager) GetInt64(key string) (value int64, err error) {
 	val, err := w.Get(key)
@@ -330,6 +342,14 @@ func (w *RedisManager) Hget(key string, subkey string) (reply interface{}, err e
 		return conn.Do("HGET", key, subkey)
 	}
 	return w.Do(action)
+}
+
+// HgetString 获取hash表的subkey值
+func (w *RedisManager) HgetString(key string, subkey string) (reply string, err error) {
+	action := func(conn redis.Conn) (interface{}, error) {
+		return conn.Do("HGET", key, subkey)
+	}
+	return redis.String(w.Do(action))
 }
 
 // Hexists 查询一个键值是否存在
