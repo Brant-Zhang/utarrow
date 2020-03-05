@@ -9,17 +9,10 @@ func TestShow(t *testing.T) {
 	l.Push(3, "japan")
 	l.Push(10, "china")
 	l.Push(22, "taiwan")
-
-	err := Setup("/tmp/log", "debug")
-	if err != nil {
-		t.Error("log error", err)
+	e := l.Search(22)
+	if e != nil {
+		t.Log(e.Value)
 	}
-	Info("good morning brant!")
-	Debugln("hello 1")
-	Warnln("hello 2")
-	var a []byte
-	var b int
-	Debug("nihao--%s--%v", a, b)
 }
 
 /*

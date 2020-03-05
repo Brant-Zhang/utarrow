@@ -1,13 +1,22 @@
 package list
 
 import (
+	"fmt"
 	"math/rand"
+	"time"
 )
 
 const (
 	MAXLEVEL = 32
 	SP       = 0.25
 )
+
+var RD *rand.Rand
+
+func pre() {
+	s := rand.NewSource(time.Now().Unix())
+	RD = rand.New(s)
+}
 
 type SEelement struct {
 	Value interface{}
@@ -18,8 +27,12 @@ type SEelement struct {
 
 func randomLV() int {
 	lv := 1
-	for v := rand.Intn(4); v == 3; {
-		lv += 1
+	for {
+		if v := RD.Intn(4); v == 3 {
+			lv += 1
+		} else {
+			break
+		}
 	}
 	return lv
 }
@@ -48,21 +61,25 @@ type SList struct {
 
 func (l *SList) Init() *SList {
 	l.len = 0
-	l.level = 0
-	l.next
+	l.level = 1
+	l.root.next = make([]*SEelement, 1)
 	return l
 }
 
 func NewSkipList() *SList {
+	pre()
 	return new(SList).Init()
 }
 
 func (l *SList) Len() int { return l.len }
 
 func (l *SList) Search(key int) *SEelement {
-	var tmp *SEelement = l.root.next[l.level]
+	var tmp *SEelement = l.root.next[l.level-1]
 	var prev = make([]*SEelement, l.level)
-	for lv := l.level; lv >= 0; lv-- {
+	for lv := l.level - 1; lv >= 0; lv-- {
+		if tmp != nil {
+			continue
+		}
 		for tmp.next != nil {
 			if tmp.Key < key {
 				prev[lv] = tmp
@@ -80,9 +97,11 @@ func (l *SList) Search(key int) *SEelement {
 }
 
 func (l *SList) Push(key int, value interface{}) *SEelement {
-	var tmp *SEelement = l.root.next[l.level]
+	var tmp *SEelement = l.root.next[l.level-1]
 	var prev = make([]*SEelement, l.level)
-	for lv := l.level; lv >= 0; lv-- {
+lb:
+	for lv := l.level - 1; lv >= 0; lv-- {
+		prev[lv] = &l.root
 		for tmp != nil {
 			if tmp.Key < key {
 				prev[lv] = tmp
@@ -93,16 +112,28 @@ func (l *SList) Push(key int, value interface{}) *SEelement {
 				return tmp
 			} else {
 				if lv == 0 {
-					break
+					break lb
 				}
 			}
 		}
 	}
 	// new node
 	e := newSElement(key, value)
-	for lv := l.level; lv >= 0; lv-- {
+	var lg int
+	if e.Level > l.level {
+		lg = l.level
+	} else {
+		lg = e.Level
+	}
+	for lv := lg - 1; lv >= 0; lv-- {
+		fmt.Println("--------", lv, l.level)
 		e.next[lv] = prev[lv].next[lv]
 		prev[lv].next[lv] = e
+	}
+	for e.Level > l.level {
+		var add *SEelement = e
+		l.root.next = append(l.root.next, add)
+		l.level++
 	}
 	return e
 }
