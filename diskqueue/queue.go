@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path"
 	"sync"
@@ -21,15 +22,66 @@ type dqueue struct {
 	writeResp       chan error
 	writePos        int64
 	readChan        chan []byte
-	writeFileNum    int
+	writeFileNum    int64
+	readLine        readPosition
 	itemCounts      int64
 	writeBuffer     bytes.Buffer
 	sync.RWMutex
+	needSync bool
 	exitFlag int
 }
 
-func (d *dqueue) fileName(fileNum int) string {
+func (d *dqueue) checkReadAble() bool {
+	if d.readLine.readFileNum < d.writeFileNum || d.readLine.readPos < d.writePos {
+		return true
+	}
+	return false
+}
+
+func (d *dqueue) fileName(fileNum int64) string {
 	return fmt.Sprintf(path.Join(d.path, "%s.diskqueue.%06d.dat"), d.name, fileNum)
+}
+func (d *dqueue) ReadChan() <-chan []byte {
+	return d.readChan
+}
+func (d *dqueue) metaDataFileName() string {
+	return fmt.Sprintf(path.Join(d.path, "%s.meta.dat"), d.name)
+}
+
+func (d *dqueue) restoreFromMeta() error {
+	fname := d.metaDataFileName()
+	f, err := os.OpenFile(fname, os.O_RDONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	var counts int64
+	_, err = fmt.Fscanf(f, "%d\n%d,%d\n%d,%d\n",
+		&counts,
+		&d.writeFileNum, &d.writePos,
+		&d.readLine.readFileNum, &d.readLine.readPos)
+	if err != nil {
+		return err
+	}
+	d.itemCounts = counts
+	return nil
+}
+
+func (d *dqueue) saveMeta() error {
+	tmpfile := fmt.Sprintf("%s/%s.%d.tmp", d.path, d.name, rand.Int())
+	filename := d.metaDataFileName()
+	f, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(f, "%d\n%d,%d\n%d,%d\n", d.itemCounts, d.writeFileNum, d.writePos, d.readLine.readFileNum, d.readLine.readPos)
+	if err != nil {
+		f.Close()
+		return err
+	}
+	f.Sync()
+	f.Close()
+	return os.Rename(tmpfile, filename)
 }
 
 func (d *dqueue) writeOne(data []byte) error {
@@ -51,7 +103,7 @@ func (d *dqueue) writeOne(data []byte) error {
 		}
 	}
 	//TODO filter data
-	dataLen := len(data)
+	dataLen := int32(len(data))
 	d.writeBuffer.Reset()
 	err = binary.Write(&d.writeBuffer, binary.BigEndian, dataLen)
 	if err != nil {
@@ -79,13 +131,21 @@ func (d *dqueue) writeOne(data []byte) error {
 	return err
 }
 
+func (d *dqueue) moveForward() error {
+	d.itemCounts--
+	return nil
+}
+
 func (d *dqueue) run() {
-	//var dataRead []byte
+	var dataItem []byte
 	//var r chan []byte
 	for {
 		select {
 		case recv := <-d.writeChan:
 			d.writeResp <- d.writeOne(recv)
+		case d.readChan <- dataItem:
+			d.moveForward()
+
 		default:
 			time.Sleep(1e9 * 3)
 		}
@@ -93,12 +153,6 @@ func (d *dqueue) run() {
 	}
 }
 
-func (d *dqueue) ReadChan() <-chan []byte {
-	return d.readChan
-}
-
-func (d *dqueue) saveMeta() {
-}
 func (d *dqueue) sync() error {
 	if d.writeFile != nil {
 		err := d.writeFile.Sync()
@@ -108,7 +162,10 @@ func (d *dqueue) sync() error {
 			return err
 		}
 	}
-
+	if err := d.saveMeta(); err != nil {
+		return err
+	}
+	d.needSync = false
 	return nil
 }
 
@@ -144,6 +201,10 @@ func New(path, name string) DB {
 		writeChan:       make(chan []byte),
 		writeResp:       make(chan error),
 		readChan:        make(chan []byte),
+	}
+	err := d.restoreFromMeta()
+	if err != nil {
+		fmt.Println(err)
 	}
 	go d.run()
 	return &d

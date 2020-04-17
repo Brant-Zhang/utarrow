@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-const sample = "today is good,tomorrow will be better"
+const sample = "today is good,tomorrow will be better4"
 
 func TestWrite(t *testing.T) {
 	db := New("./", "hangzhou")
