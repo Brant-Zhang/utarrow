@@ -5,7 +5,7 @@ import (
 )
 
 func TestShell(t *testing.T) {
-	v, err := ShellRun("ip rule list")
+	v, err := ShellRun("systemctl start redis")
 	if err != nil {
 		t.Fatal(err)
 	}
