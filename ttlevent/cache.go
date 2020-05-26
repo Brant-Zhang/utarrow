@@ -13,7 +13,8 @@ type Cache struct {
 	event chan string
 }
 
-func newCache(ttl int) *Cache {
+//NewCache iniate an object
+func NewCache(ttl int) *Cache {
 	m := new(Cache)
 	m.pool = make(map[string]int64)
 	m.ttl = int64(ttl)
