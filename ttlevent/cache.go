@@ -29,6 +29,9 @@ func (c *Cache) expire(t int64) bool {
 //Put add itme in container
 func (c *Cache) Put(key string) {
 	c.mu.Lock()
+	if _, ok := c.pool[key]; !ok {
+		c.event <- "1/" + key
+	}
 	c.pool[key] = time.Now().Unix()
 	c.mu.Unlock()
 }
@@ -39,7 +42,7 @@ func (c *Cache) check() {
 		c.mu.Lock()
 		for k, v := range c.pool {
 			if c.expire(v) {
-				c.event <- "off/" + k
+				c.event <- "0/" + k
 				delete(c.pool, k)
 			}
 		}
