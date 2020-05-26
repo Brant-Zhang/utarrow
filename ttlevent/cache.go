@@ -38,7 +38,7 @@ func (c *Cache) Put(key string) {
 }
 
 func (c *Cache) check() {
-	tk := time.Tick(time.Duration(c.ttl * 1e9))
+	tk := time.Tick(time.Duration(c.ttl * 1e8))
 	for range tk {
 		c.mu.Lock()
 		for k, v := range c.pool {
