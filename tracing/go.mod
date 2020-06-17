@@ -1,4 +1,4 @@
-module github.com/branthz/utarrow/tracing
+module tracing
 
 go 1.14
 
