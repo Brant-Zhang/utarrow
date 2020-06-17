@@ -3,6 +3,7 @@ package tracing
 import (
 	zipkin "github.com/openzipkin/zipkin-go"
 	zipkinrpc "github.com/openzipkin/zipkin-go/middleware/grpc"
+	reco "github.com/openzipkin/zipkin-go/reporter/http"
 	"google.golang.org/grpc"
 	//"google.golang.org/grpc/stats"
 )
