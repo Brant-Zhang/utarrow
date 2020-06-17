@@ -15,9 +15,9 @@ func init() {
 }
 
 type Meta struct {
-	ip     string
-	load   uint32 //系统目前的负载数量,用在平衡用户端申请资源时平衡cluster内各节点分配
-	weight uint8  //每个节点的权值，以1为单位；1的倍数;后期可以改成小数.
+	IP     string
+	Load   uint32 //系统目前的负载数量,用在平衡用户端申请资源时平衡cluster内各节点分配
+	Weight uint8  //每个节点的权值，以1为单位；1的倍数;后期可以改成小数.
 	//ID     uint64 //leaseid as a unique id for etcd
 }
 
@@ -29,9 +29,9 @@ type node struct {
 	service string
 }
 
-func NewNode(weight uint8, name string, ip string, etcd string) *node {
+func NewNode(weight uint8, name string, ip string, etcd []string) *node {
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcd},
+		Endpoints:   etcd,
 		DialTimeout: 2 * time.Second,
 	})
 	if err != nil {
@@ -39,9 +39,9 @@ func NewNode(weight uint8, name string, ip string, etcd string) *node {
 		return nil
 	}
 	m := &Meta{
-		ip:     ip,
-		load:   0,
-		weight: weight,
+		IP:     ip,
+		Load:   0,
+		Weight: weight,
 	}
 	//m.ID = uint64(time.Now().Unix())
 	n := &node{
@@ -55,6 +55,16 @@ func NewNode(weight uint8, name string, ip string, etcd string) *node {
 
 func (s *node) Stop() {
 	s.stop <- nil
+}
+
+func (s *node) gettest(key string) error {
+	res, err := s.conn.Get(context.TODO(), key, clientv3.WithPrefix())
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
+	log.Info("get response:%v\n", res.Kvs)
+	return nil
 }
 
 func (s *node) revoke() error {
