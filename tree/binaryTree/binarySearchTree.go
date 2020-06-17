@@ -28,6 +28,15 @@ func (t *treeNode) Find(key elementType) position {
 	}
 }
 
+func (t *treeNode) LeftSearch() {
+	if t == nil {
+		return
+	}
+	fmt.Println(t.value)
+	t.lchild.LeftSearch()
+	t.rchild.LeftSearch()
+}
+
 func (t *treeNode) Insert(key elementType) *treeNode {
 	if t == nil {
 		t = new(treeNode)
@@ -111,10 +120,11 @@ func main() {
 	bt.Insert(1)
 	bt.Insert(88)
 	bt.Insert(100)
-	v := bt.Delete(10)
-	v = bt.FindMax()
-	if v != nil {
-		fmt.Println(v.value)
-	}
-	fmt.Println(bt.value)
+	bt.LeftSearch()
+	//v := bt.Delete(10)
+	//v = bt.FindMax()
+	//if v != nil {
+	//	fmt.Println(v.value)
+	//}
+	//fmt.Println(bt.value)
 }
