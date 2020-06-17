@@ -5,7 +5,7 @@ import (
 	zipkinrpc "github.com/openzipkin/zipkin-go/middleware/grpc"
 	reco "github.com/openzipkin/zipkin-go/reporter/http"
 	"google.golang.org/grpc"
-	//"google.golang.org/grpc/stats"
+	"google.golang.org/grpc/stats"
 )
 
 var Gtracer *zipkin.Tracer
@@ -31,6 +31,6 @@ func NewRpcServer(tags map[string]string) *grpc.Server {
 	return s
 }
 
-func NewClientHandler() grpc.DialOption {
-	return grpc.WithStatsHandler(zipkinrpc.NewClientHandler(Gtracer))
+func NewClientHandler() stats.Handler {
+	return zipkinrpc.NewClientHandler(Gtracer)
 }
