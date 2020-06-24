@@ -60,6 +60,8 @@ const (
 	skind kind = iota
 	pkind
 	akind
+	leafkind
+	bkind
 )
 
 // NewRouter returns a new Router instance.

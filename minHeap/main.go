@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"sync"
+)
+
 type timer struct {
 	i     int
 	score int64
@@ -7,21 +12,50 @@ type timer struct {
 }
 
 type timerst struct {
-	t []*timer
+	t      []*timer
+	tcap   int
+	tindex int
+	lock   sync.RWMutex
 }
 
 func newTimer() *timerst {
 	t := new(timerst)
+	t.tcap = 10
+	t.t = make([]*timer, 10)
 	return t
 }
 
 func (s *timerst) addSession(m *timer) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	m.i = len(s.t)
 	s.t = append(s.t, m)
 	s.shiftUp(m.i)
 	if m.i == 0 {
 
 	}
+}
+
+func (s *timerst) delSession(m *timer) bool {
+	s.lock.Lock()
+	i := m.i
+	last := len(s.t) - 1
+	if i < 0 || i > last || s.t[i] != m {
+		s.lock.Unlock()
+		return false
+	}
+	if i != last {
+		s.t[i] = s.t[last]
+		s.t[i].i = i
+	}
+	s.t[last] = nil
+	s.t = s.t[:last]
+	if i != last {
+		s.shiftUp(i)
+		s.shiftDown(i)
+	}
+	s.lock.Unlock()
+	return true
 }
 
 func (s *timerst) shiftDown(i int) {
@@ -41,7 +75,7 @@ func (s *timerst) shiftDown(i int) {
 			c++
 		}
 		if c3 < n {
-			w3 := t[c3].when
+			w3 := t[c3].score
 			if c3+1 < n && t[c3+1].score < w3 {
 				w3 = t[c3+1].score
 				c3++
@@ -79,6 +113,19 @@ func (s *timerst) shiftUp(i int) {
 	}
 }
 
+func (s *timerst) show() {
+	for _, v := range s.t {
+		fmt.Printf("score:%d,key:%s\n", v.score, v.key)
+	}
+}
+
 func main() {
 	t := newTimer()
+	for i := 11; i < 15; i++ {
+		m := new(timer)
+		m.score = int64(i)
+		m.key = "hello"
+		t.addSession(m)
+	}
+	t.show()
 }

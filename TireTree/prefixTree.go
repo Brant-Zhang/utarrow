@@ -2,15 +2,25 @@ package main
 
 import "fmt"
 
+type room struct {
+	name string
+	path string
+	isps []string
+	tws  []string
+}
+
 type Trie struct {
+	kind     kind
 	path     string
 	parent   *Trie
 	children []*Trie
+	room     room
 }
 
 /** Initialize your data structure here. */
 func Constructor() Trie {
 	t := new(Trie)
+	t.kind = bkind
 	return *t
 }
 
@@ -22,7 +32,8 @@ func (this *Trie) show() {
 }
 
 /** Inserts a word into the trie. */
-func (this *Trie) Insert(word string) {
+func (this *Trie) Insert(r room) {
+	word := r.path
 	if word[0] != '/' {
 		word = "/" + word
 	}
@@ -54,7 +65,9 @@ func (this *Trie) Insert(word string) {
 	} else if l < wl {
 		//add as children
 		t := new(Trie)
+		t.kind = leafkind
 		t.path = word[l:wl]
+		t.room = r
 		this.children = append(this.children, t)
 	} else {
 		//node already exists
