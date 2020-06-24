@@ -1,4 +1,4 @@
-module github.com/branthz/hold/shm/blackfriday
+module github.com/branthz/utarrow/blackfriday
 
 go 1.14
 
