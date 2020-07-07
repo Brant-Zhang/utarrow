@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+var DefaultCache *Cache
+
 //Cache contains item timing info for event creater
 type Cache struct {
 	pool  map[string]int64
@@ -19,6 +21,8 @@ func NewCache(ttl int) *Cache {
 	m.pool = make(map[string]int64)
 	m.ttl = int64(ttl)
 	m.Event = make(chan string, 1000)
+	m.restore()
+	DefaultCache = m
 	go m.check()
 	return m
 }
@@ -36,7 +40,12 @@ func (c *Cache) Put(key string) {
 	c.pool[key] = time.Now().Unix()
 	c.mu.Unlock()
 }
-
+func (c *Cache) exist(key string) bool {
+	c.mu.Lock()
+	_, ok := c.pool[key]
+	c.mu.Unlock()
+	return ok
+}
 func (c *Cache) check() {
 	tk := time.Tick(time.Duration(c.ttl * 1e8))
 	for range tk {
@@ -47,6 +56,7 @@ func (c *Cache) check() {
 				delete(c.pool, k)
 			}
 		}
+		c.backup()
 		c.mu.Unlock()
 	}
 }
