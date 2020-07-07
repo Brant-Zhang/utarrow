@@ -9,7 +9,7 @@ const dir = "/home/app/meta/"
 const filename = "ttl.data"
 
 func (c *Cache) backup() error {
-	f, err := os.OpenFile(dir+filename, os.O_RDWR|os.O_CREATE, 0755)
+	f, err := os.OpenFile(dir+filename, os.O_WRONLY|os.O_CREATE, 0755)
 	if err != nil {
 		return err
 	}
