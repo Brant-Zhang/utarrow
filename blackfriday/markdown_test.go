@@ -37,3 +37,18 @@ func TestDocument(t *testing.T) {
 	}
 	doTests(t, tests)
 }
+
+func TestHello(t *testing.T) {
+	var abc = `
+	func (r *raft) becomeFollower(term uint64, lead uint64) {
+    r.step = stepFollower
+    r.reset(term)
+    r.tick = r.tickElection
+    r.lead = lead
+    r.state = StateFollower
+	}
+	`
+	var input = []byte(abc)
+	re := Run(input)
+	t.Logf("%s", string(re))
+}
