@@ -13,10 +13,10 @@ import (
 )
 
 type dqueue struct {
-	path            string
-	name            string
-	maxBytesPerFile int
-	writeFile       *os.File
+	path            string   //file dir
+	name            string   //file name
+	maxBytesPerFile int      //segment size limit
+	writeFile       *os.File //filer
 	exitChan        chan int
 	writeChan       chan []byte
 	writeResp       chan error
@@ -169,7 +169,7 @@ func (d *dqueue) sync() error {
 	return nil
 }
 
-func (d *dqueue) Put(data []byte) error {
+func (d *dqueue) Write(data []byte) error {
 	d.RLock()
 	defer d.RUnlock()
 	if d.exitFlag == 1 {
@@ -185,11 +185,6 @@ func (d *dqueue) Close() error {
 	d.exitFlag = 1
 	close(d.exitChan)
 	return d.sync()
-}
-
-type DB interface {
-	Close() error
-	Put(data []byte) error
 }
 
 func New(path, name string) DB {
