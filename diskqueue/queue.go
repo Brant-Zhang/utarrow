@@ -1,172 +1,100 @@
 package diskqueue
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"math/rand"
-	"os"
-	"path"
 	"sync"
 	"time"
+
+	"github.com/branthz/utarrow/lib/log"
 )
 
 type dqueue struct {
-	path            string   //file dir
-	name            string   //file name
-	maxBytesPerFile int      //segment size limit
-	writeFile       *os.File //filer
-	exitChan        chan int
-	writeChan       chan []byte
-	writeResp       chan error
-	writePos        int64
-	readChan        chan []byte
-	writeFileNum    int64
-	readLine        readPosition
-	itemCounts      int64
-	writeBuffer     bytes.Buffer
+	fdes       fileSeg
+	exitChan   chan int
+	exitWait   chan int
+	writeChan  chan []byte
+	writeResp  chan error
+	writePos   int64
+	readChan   chan []byte
+	itemCounts int64
 	sync.RWMutex
-	needSync bool
 	exitFlag int
 }
 
-func (d *dqueue) checkReadAble() bool {
-	if d.readLine.readFileNum < d.writeFileNum || d.readLine.readPos < d.writePos {
-		return true
-	}
-	return false
+//Empty 清空该消息队列
+//通过重置meta文件
+func (d *dqueue) Empty() error {
+	return nil
 }
 
-func (d *dqueue) fileName(fileNum int64) string {
-	return fmt.Sprintf(path.Join(d.path, "%s.diskqueue.%06d.dat"), d.name, fileNum)
-}
+//Delete 清除topic相关的一切环境
+func (d *dqueue) Delete() error { return nil }
+
+//Depth
+func (d *dqueue) Depth() int64 { return 0 }
+
 func (d *dqueue) ReadChan() <-chan []byte {
 	return d.readChan
 }
-func (d *dqueue) metaDataFileName() string {
-	return fmt.Sprintf(path.Join(d.path, "%s.meta.dat"), d.name)
-}
-
-func (d *dqueue) restoreFromMeta() error {
-	fname := d.metaDataFileName()
-	f, err := os.OpenFile(fname, os.O_RDONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	var counts int64
-	_, err = fmt.Fscanf(f, "%d\n%d,%d\n%d,%d\n",
-		&counts,
-		&d.writeFileNum, &d.writePos,
-		&d.readLine.readFileNum, &d.readLine.readPos)
-	if err != nil {
-		return err
-	}
-	d.itemCounts = counts
-	return nil
-}
-
-func (d *dqueue) saveMeta() error {
-	tmpfile := fmt.Sprintf("%s/%s.%d.tmp", d.path, d.name, rand.Int())
-	filename := d.metaDataFileName()
-	f, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(f, "%d\n%d,%d\n%d,%d\n", d.itemCounts, d.writeFileNum, d.writePos, d.readLine.readFileNum, d.readLine.readPos)
-	if err != nil {
-		f.Close()
-		return err
-	}
-	f.Sync()
-	f.Close()
-	return os.Rename(tmpfile, filename)
-}
 
 func (d *dqueue) writeOne(data []byte) error {
-	//TODO open file
-	var err error
-	if d.writeFile == nil {
-		curFileName := d.fileName(d.writeFileNum)
-		d.writeFile, err = os.OpenFile(curFileName, os.O_RDWR|os.O_CREATE, 0600)
-		if err != nil {
-			return err
-		}
-		if d.writePos > 0 {
-			_, err = d.writeFile.Seek(d.writePos, 0)
-			if err != nil {
-				d.writeFile.Close()
-				d.writeFile = nil
-				return err
-			}
-		}
-	}
-	//TODO filter data
-	dataLen := int32(len(data))
-	d.writeBuffer.Reset()
-	err = binary.Write(&d.writeBuffer, binary.BigEndian, dataLen)
-	if err != nil {
-		return err
-	}
-	_, err = d.writeBuffer.Write(data)
-	if err != nil {
-		return err
-	}
-	_, err = d.writeFile.Write(d.writeBuffer.Bytes())
-	if err != nil {
-		d.writeFile.Close()
-		d.writeFile = nil
-		return err
-	}
-	d.writePos = d.writePos + 4 + int64(dataLen)
-	d.itemCounts++
-
-	if d.writePos > int64(d.maxBytesPerFile) {
-		d.writeFileNum++
-		d.sync()
-		d.writeFile.Close()
-		d.writeFile = nil
-	}
-	return err
+	return d.fdes.writer.write(data)
 }
 
+//移动reader标记，清除历史文件
 func (d *dqueue) moveForward() error {
 	d.itemCounts--
+	if err := d.fdes.reader.walkfile(); err != nil {
+		log.Errorln(err)
+	}
 	return nil
 }
 
+//为了实现对存储管理的并发操作，通过后台线程ioLoop统一管理
 func (d *dqueue) run() {
 	var dataItem []byte
-	//var r chan []byte
+	var r chan []byte
+	var err error
+	syncTicker := time.NewTicker(2 * 1e9)
 	for {
+		if d.fdes.needSync {
+			d.fdes.sync()
+		}
+		if d.fdes.checkReadAble() && d.fdes.reader.match() {
+			dataItem, err = d.fdes.reader.readOne()
+			if err != nil {
+				log.Errorln(err)
+				time.Sleep(1e9)
+				continue
+			}
+			r = d.readChan
+		} else {
+			r = nil
+		}
 		select {
 		case recv := <-d.writeChan:
 			d.writeResp <- d.writeOne(recv)
-		case d.readChan <- dataItem:
+		case r <- dataItem:
+			log.Debugln("get in read channel")
 			d.moveForward()
-
-		default:
-			time.Sleep(1e9 * 3)
+		case <-syncTicker.C:
+			log.Info("ioloop ticker hanppend")
+		case <-d.exitChan:
+			goto exit
 		}
-		time.Sleep(1e9)
 	}
+exit:
+	syncTicker.Stop()
+	d.exitWait <- 1
 }
 
-func (d *dqueue) sync() error {
-	if d.writeFile != nil {
-		err := d.writeFile.Sync()
-		if err != nil {
-			d.writeFile.Close()
-			d.writeFile = nil
-			return err
-		}
-	}
-	if err := d.saveMeta(); err != nil {
-		return err
-	}
-	d.needSync = false
-	return nil
+func (d *dqueue) exit() {
+	d.exitFlag = 1
+	d.exitChan <- 1
+	<-d.exitWait
+	close(d.exitChan)
+	close(d.exitWait)
 }
 
 func (d *dqueue) Write(data []byte) error {
@@ -179,28 +107,33 @@ func (d *dqueue) Write(data []byte) error {
 	return <-d.writeResp
 }
 
+//queue object close
 func (d *dqueue) Close() error {
-	d.RLock()
-	defer d.RUnlock()
-	d.exitFlag = 1
-	close(d.exitChan)
-	return d.sync()
+	//d.RLock()
+	//defer d.RUnlock()
+	log.Warnln("queue close")
+	d.exit()
+	d.fdes.sync()
+	d.fdes.Shutdown()
+	return nil
 }
 
+//New 构造一个实例
 func New(path, name string) DB {
+	fd := newfileSeg(path, name)
 	d := dqueue{
-		path:            path,
-		name:            name,
-		maxBytesPerFile: 1 << 12,
-		exitChan:        make(chan int, 0),
-		writeChan:       make(chan []byte),
-		writeResp:       make(chan error),
-		readChan:        make(chan []byte),
+		fdes:      *fd,
+		exitChan:  make(chan int, 0),
+		exitWait:  make(chan int, 0),
+		writeChan: make(chan []byte),
+		writeResp: make(chan error),
+		readChan:  make(chan []byte),
 	}
-	err := d.restoreFromMeta()
+	err := d.fdes.load()
 	if err != nil {
 		fmt.Println(err)
 	}
+	log.Info("queue:%s", d.fdes.String())
 	go d.run()
 	return &d
 }
