@@ -1,6 +1,6 @@
 package nfence
 
-type node struct {
+type Node struct {
 	ID     string
 	Host   string
 	etcds  []string
@@ -8,8 +8,8 @@ type node struct {
 	zcli   *Zclient
 }
 
-func NewNode(id string, host string, etcds []string) *node {
-	n := &node{
+func NewNode(id string, host string, etcds []string) *Node {
+	n := &Node{
 		ID:     id,
 		Host:   host,
 		etcds:  etcds,
@@ -19,15 +19,21 @@ func NewNode(id string, host string, etcds []string) *node {
 	return n
 }
 
-func (n *node) Start() {
+func (n *Node) Start() {
+	Infof("Node:%s start....", n.ID)
 	n.zcli.run()
 }
 
-func (n *node) becomeLeader() {
+func (n *Node) Stop() {
+	Infof("Node:%s stop....", n.ID)
+	n.zcli.Stop()
+}
+
+func (n *Node) becomeLeader() {
 
 }
 
-func (n *node) becomeFollower() {
+func (n *Node) becomeFollower() {
 
 }
 

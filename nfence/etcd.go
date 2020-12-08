@@ -13,6 +13,10 @@ import (
 	"github.com/branthz/etcd/clientv3"
 )
 
+const (
+	PathPrefix = "nfence/"
+)
+
 type ninfo struct {
 }
 
@@ -65,6 +69,7 @@ func (s *Zclient) run() {
 		case <-s.stop:
 			s.revoke()
 		case <-s.client.Ctx().Done():
+			Error("server closed")
 			return
 		case ka, ok := <-ch:
 			if !ok {
@@ -95,7 +100,7 @@ func (s *Zclient) keepAlive() (<-chan *clientv3.LeaseKeepAliveResponse, error) {
 	if err != nil {
 		panic(err)
 	}
-	key := "nodes/" + s.ID
+	key := PathPrefix + s.ID
 	value := s.Info.encode()
 	_, err = s.client.Put(context.TODO(), key, string(value), clientv3.WithLease(resp.ID))
 	if err != nil {
